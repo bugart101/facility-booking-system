@@ -15,11 +15,12 @@ export const facilityService = {
     return data as Facility[];
   },
 
-  addFacility: async (name: string, equipment: string[]): Promise<Facility> => {
+  addFacility: async (name: string, equipment: string[], backgroundColor: string = '#F87171'): Promise<Facility> => {
     const newFacility = {
       name,
       equipment,
-      createdAt: Date.now()
+      backgroundColor,
+      createdAt: Date.now(),
     };
 
     const { data, error } = await supabase

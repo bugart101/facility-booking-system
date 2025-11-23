@@ -52,4 +52,5 @@ export interface Facility {
   name: string;
   equipment: string[]; // List of available equipment names
   createdAt: number;
+  backgroundColor: string;
 }

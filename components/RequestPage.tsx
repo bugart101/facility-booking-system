@@ -25,13 +25,20 @@ export const RequestPage: React.FC<RequestPageProps> = ({ events, onEventsUpdate
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [filteredEvents, setFilteredEvents] = useState<EventRequest[]>([]);
+  const [facilityColors, setFacilityColors] = useState<Record<string, string>>({});
   
   const [facilities, setFacilities] = useState<Facility[]>([]);
 
   useEffect(() => {
     const loadFacilities = async () => {
       const data = await facilityService.getFacilities();
-      setFacilities(data);
+      setFacilities(data);   
+
+      const colors: Record<string, string> = {};
+      data.forEach(f => {
+        if (f.backgroundColor) colors[f.name] = f.backgroundColor; // safe access
+      });
+      setFacilityColors(colors);
     };
     loadFacilities();
   }, []);
@@ -101,6 +108,11 @@ export const RequestPage: React.FC<RequestPageProps> = ({ events, onEventsUpdate
     return facility ? facility.equipment : [];
   };
 
+  const getFacilityColor = (facilityName: string) => {
+    const color = facilityColors[facilityName];
+    return color;
+  };
+  
   const handleDownloadWord = () => {
     if (!selectedRequest) return;
 
@@ -314,6 +326,10 @@ export const RequestPage: React.FC<RequestPageProps> = ({ events, onEventsUpdate
                     ? 'bg-green-50 border-green-500 ring-1 ring-green-500' 
                     : 'bg-white border-gray-200 hover:border-green-300'}
                 `}
+                style={{
+                  backgroundColor: getFacilityColor(event.facility),
+                  color: '#000',
+                }}
               >
                 <div className="flex justify-between items-start mb-1">
                   <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{event.facility}</span>

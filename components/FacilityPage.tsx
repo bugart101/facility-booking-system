@@ -18,6 +18,12 @@ export const FacilityPage: React.FC = () => {
   const [equipmentInput, setEquipmentInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Facility Color
+
+  const [facilityColor, setFacilityColor] = useState<string>('#' + Math.floor(Math.random()*16777215).toString(16));
+  const [colorError, setColorError] = useState<string | null>(null);
+
+
   // Delete State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
@@ -38,6 +44,7 @@ export const FacilityPage: React.FC = () => {
     setFacilityName('');
     setEquipmentList([]);
     setEquipmentInput('');
+    setFacilityColor('#' + Math.floor(Math.random()*16777215).toString(16)); 
     setIsFormModalOpen(true);
   };
 
@@ -46,6 +53,7 @@ export const FacilityPage: React.FC = () => {
     setFacilityName(facility.name);
     setEquipmentList([...facility.equipment]); // Copy array
     setEquipmentInput('');
+    setFacilityColor(facility.backgroundColor || '#' + Math.floor(Math.random()*16777215).toString(16));
     setIsFormModalOpen(true);
   };
 
@@ -73,11 +81,12 @@ export const FacilityPage: React.FC = () => {
       await facilityService.updateFacility({
         ...editingFacility,
         name: facilityName.trim(),
-        equipment: equipmentList
+        equipment: equipmentList,
+        backgroundColor: facilityColor,
       });
     } else {
       // Add new
-      await facilityService.addFacility(facilityName.trim(), equipmentList);
+      await facilityService.addFacility(facilityName.trim(), equipmentList, facilityColor);
     }
 
     setIsFormModalOpen(false);
@@ -221,6 +230,32 @@ export const FacilityPage: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary outline-none bg-white text-gray-900"
             />
           </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 mb-1">Background Color</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={facilityColor}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFacilityColor(val);
+
+                  // Hex validation
+                  const hexRegex = /^#([0-9A-Fa-f]{6})$/;
+                  setColorError(hexRegex.test(val) ? null : 'Invalid hex color');
+                }}
+                placeholder="#FF5733"
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary outline-none text-sm w-32"
+              />
+              <div 
+                className="w-8 h-8 rounded border border-gray-300"
+                style={{ backgroundColor: colorError ? '#fff' : facilityColor }}
+              />
+            </div>
+            {colorError && <p className="text-xs text-red-500 mt-1">{colorError}</p>}
+          </div>
+
 
           <div>
              <label className="block text-sm font-semibold text-gray-800 mb-2">Equipment List</label>

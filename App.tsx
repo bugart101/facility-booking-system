@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [selectedDateForForm, setSelectedDateForForm] = useState<Date>(new Date());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.HOME);
+  const [facilityColors, setFacilityColors] = useState<Record<string, string>>({});
   
   // Check auth on mount
   useEffect(() => {
@@ -37,8 +38,15 @@ const App: React.FC = () => {
       eventService.getEvents(),
       facilityService.getFacilities()
     ]);
+
+    const colors: Record<string, string> = {};
+    facilityData.forEach(f => {
+      if (f.backgroundColor) colors[f.name] = f.backgroundColor;
+    });
+
     setEvents(eventData);
     setFacilities(facilityData);
+    setFacilityColors(colors);
   };
 
   const handleLoginSuccess = (user: User) => {
@@ -93,6 +101,7 @@ const App: React.FC = () => {
                 onDateChange={setCurrentDate}
                 onEventClick={setSelectedEvent}
                 onDateClick={handleDateClick}
+                facilityColors={facilityColors}
               />
             </div>
 

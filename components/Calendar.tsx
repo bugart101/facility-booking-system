@@ -22,6 +22,7 @@ interface CalendarProps {
   onDateChange: (date: Date) => void;
   onEventClick: (event: EventRequest) => void;
   onDateClick: (date: Date) => void;
+  facilityColors?: Record<string, string>;
 }
 
 export const Calendar: React.FC<CalendarProps> = ({ 
@@ -29,7 +30,8 @@ export const Calendar: React.FC<CalendarProps> = ({
   currentDate, 
   onDateChange,
   onEventClick,
-  onDateClick
+  onDateClick,
+  facilityColors = {},
 }) => {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -49,6 +51,11 @@ export const Calendar: React.FC<CalendarProps> = ({
 
   const getEventsForDay = (day: Date) => {
     return events.filter(event => isSameDay(parseISO(event.date), day));
+  };
+
+  const getFacilityColor = (facilityName: string) => {
+    const color = facilityColors[facilityName];
+    return color;
   };
 
   return (
@@ -133,7 +140,11 @@ export const Calendar: React.FC<CalendarProps> = ({
                       e.stopPropagation();
                       onEventClick(event);
                     }}
-                    className="w-full text-left text-xs px-2 py-1 rounded bg-green-50 border border-green-200 text-green-900 truncate hover:bg-green-100 hover:border-green-300 transition-colors flex items-center gap-1 group-hover/event:shadow-sm"
+                    className="w-full text-left text-xs px-2 py-1 rounded truncate flex items-center gap-1"
+                    style={{
+                      backgroundColor: getFacilityColor(event.facility),
+                      color: '#000',
+                    }}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
                     <span className="font-bold truncate">{event.startTime}</span>
