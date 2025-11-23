@@ -1,10 +1,11 @@
 
 import React, { useState, FormEvent, useEffect } from 'react';
-import { Plus, Trash2, Calendar as CalendarIcon, Clock, User, MapPin, CheckCircle2, Save } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, Clock, User, MapPin, CheckCircle2, Save, AlertTriangle } from 'lucide-react';
 import { EventRequest, Equipment, Facility, User as AppUser } from '../types';
 import { eventService } from '../services/eventService';
 import { facilityService } from '../services/facilityService';
 import { authService } from '../services/authService';
+import { Modal } from './Modal';
 
 interface EventFormProps {
   onEventCreated: () => void;
@@ -13,12 +14,15 @@ interface EventFormProps {
   onCancel?: () => void;
 }
 
-export const EventForm: React.FC<EventFormProps> = ({ onEventCreated, initialDate, initialData, onCancel }) => {
+export const EventForm: React.FC<EventFormProps> = ({ onEventCreated, initialDate, initialData, onCancel, events }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [availableFacilities, setAvailableFacilities] = useState<Facility[]>([]);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
 
+  const [conflictModalOpen, setConflictModalOpen] = useState(false);
+  const [conflictEvents, setConflictEvents] = useState<EventRequest[]>([]);
+  const [isApprovedConflict, setIsApprovedConflict] = useState(false); 
   // Form State
   const [requesterName, setRequesterName] = useState('');
   const [eventTitle, setEventTitle] = useState('');
@@ -92,10 +96,32 @@ export const EventForm: React.FC<EventFormProps> = ({ onEventCreated, initialDat
     setEquipmentList(equipmentList.filter(item => item.id !== id));
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) return;
+  const toMinutes = (timeStr: string) => {
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+  };
 
+  const checkConflicts = (): EventRequest[] => {
+    const eventList = events || [];
+    const startMin = toMinutes(startTime) - 30;
+    const endMin = toMinutes(endTime) + 30;
+
+    return eventList.filter(event => {
+      if (
+        event.facility !== facility ||
+        event.status === 'Rejected' ||
+        event.status === 'Cancelled' ||
+        event.date !== date ||
+        event.id === initialData?.id
+      ) return false;
+
+      const eventStart = toMinutes(event.startTime);
+      const eventEnd = toMinutes(event.endTime);
+      return !(endMin <= eventStart || startMin >= eventEnd);
+    });
+  };
+  
+  const saveEvent = async () => {
     setIsLoading(true);
     setSuccessMsg(null);
 
@@ -146,6 +172,33 @@ export const EventForm: React.FC<EventFormProps> = ({ onEventCreated, initialDat
       setIsLoading(false);
     }
   };
+
+  const handleSubmit = async (e: FormEvent, proceedAnyway = false) => {
+    e.preventDefault();
+    if (!currentUser) return;
+  
+    const conflicts = checkConflicts();
+    const approvedConflicts = conflicts.filter(event => event.status === 'Approved');
+    const pendingConflicts = conflicts.filter(event => event.status !== 'Approved');
+  
+    if (!proceedAnyway) {
+      if (approvedConflicts.length > 0) {
+        setConflictEvents(approvedConflicts);
+        setIsApprovedConflict(true);
+        setConflictModalOpen(true);
+        return;
+      }
+  
+      if (pendingConflicts.length > 0) {
+        setConflictEvents(pendingConflicts);
+        setIsApprovedConflict(false);
+        setConflictModalOpen(true);
+        return;
+      }
+    }
+  
+    await saveEvent();
+  };  
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 text-gray-900">
@@ -330,6 +383,60 @@ export const EventForm: React.FC<EventFormProps> = ({ onEventCreated, initialDat
           )}
         </button>
       </div>
+
+      <Modal
+        isOpen={conflictModalOpen}
+        onClose={() => setConflictModalOpen(false)}
+        title={isApprovedConflict ? "Approved Event Exists" : "Pending Event Conflicts"}
+      >
+        <div className="space-y-6">
+          <div className="flex items-start gap-4">
+            <div className={`flex-shrink-0 rounded-full p-2 ${isApprovedConflict ? 'bg-red-100' : 'bg-yellow-100'}`}>
+              <AlertTriangle className={isApprovedConflict ? 'text-red-600' : 'text-yellow-600'} size={24} />
+            </div>
+            <div>
+              <h4 className="text-lg font-medium text-gray-900">
+                {isApprovedConflict ? "Cannot Proceed" : "Pending Events Detected"}
+              </h4>
+              <p className="text-sm text-gray-600 mt-1">
+                {isApprovedConflict
+                  ? "There is already an approved event in this facility:"
+                  : "There are pending events in this facility at the same time:"}
+              </p>
+              <div className="mt-2 space-y-1 p-2 bg-gray-50 rounded border border-gray-200 text-sm">
+                {conflictEvents.map(ev => (
+                  <div key={ev.id}>
+                    <span className="font-bold">{ev.eventTitle}</span> by {ev.requesterName} <br />
+                    <span className="text-gray-500">{ev.facility} | {ev.date} | {ev.startTime}-{ev.endTime}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setConflictModalOpen(false)}
+              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 font-bold text-sm transition-colors"
+            >
+              {isApprovedConflict ? "Close" : "Cancel"}
+            </button>
+            {!isApprovedConflict && (
+              <button
+                onClick={async () => {
+                  setConflictModalOpen(false);
+                  await handleSubmit(new Event('submit'), true);
+                }}
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover font-bold text-sm transition-colors"
+              >
+                Proceed Anyway
+              </button>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+
       {successMsg && (
           <div className="mt-3 p-3 bg-green-50 text-green-800 text-sm rounded-md flex items-center gap-2 animate-fade-in font-medium">
             <CheckCircle2 size={16} />
@@ -337,5 +444,7 @@ export const EventForm: React.FC<EventFormProps> = ({ onEventCreated, initialDat
           </div>
         )}
     </form>
+
+    
   );
 };

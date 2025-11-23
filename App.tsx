@@ -111,6 +111,7 @@ const App: React.FC = () => {
                 <EventForm 
                   onEventCreated={handleEventCreated} 
                   initialDate={selectedDateForForm}
+                  events={events}
                 />
               </div>
             </div>
